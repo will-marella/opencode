@@ -19,60 +19,48 @@
 ## 🔒 Protected Mode Fork
 
 > **This is a fork of OpenCode that implements Protected Mode** - a macOS security feature that uses kernel-level file protection to prevent AI agents from accessing sensitive credentials and files.
->
-> [View original pull request #5864](https://github.com/sst/opencode/pull/5864)
 
-### The Problem
+### Problem
 
-AI agents in OpenCode have full filesystem access, creating security risks for credentials and sensitive files. Prompt-level protections are insufficient to prevent AI from accessing and leaking credentials.
+AI agents in OpenCode have full filesystem access, creating security risks for credentials and sensitive files. Recent vulnerabilities demonstrate that prompt-level protections are insufficient to prevent AI from accessing and leaking credentials.
 
-### The Solution
+### Solution
 
-Protected Mode uses **Unix file permissions to enforce file restrictions at the kernel level**. Commands run as a restricted user (`opencode-agent`) that cannot read protected files.
+Protected Mode uses **Unix file permissions to enforce file restrictions at the kernel level**. Commands run as a restricted user (`opencode-agent`) that cannot read protected files. Even if prompt injection succeeds, the OS blocks unauthorized access before data is read.
 
-### Key Features
+### Demo
 
-- **Restricted user execution** - All AI agent commands run as `opencode-agent` with limited permissions
-- **Kernel-level ACL enforcement** - Uses macOS Access Control Lists for security
-- **Command whitelisting** - Common development tools (like git) are pre-approved
-- **Configurable protection** - Manage settings via `~/.opencode/security.json`
+![Protected Mode Demo](packages/web/src/assets/lander/OpenCodeProtectDemo.gif)
 
-### Usage
+### Commands
 
 ```bash
-# Set up protected mode (one-time setup)
 opencode protect setup
+```
 
-# Protect specific files or directories
-opencode protect lock ~/.ssh/id_rsa
-opencode protect lock .env
+Creates the opencode-agent user, initializes `~/.opencode/security.json`, configures sudo rules.
 
-# Check protection status
+```bash
+opencode protect lock
+```
+
+Applies protections to files specified in security.json.
+
+```bash
 opencode protect status
 ```
 
-### Implementation Details
+Shows currently protected files and security configuration state.
 
-- **~1,000 lines** in new `src/util/security/` module
-- **Platform-specific** macOS (darwin) implementation
-- **14 files changed** with 1,070 insertions, 12 deletions
-- Sudo-based ACL management with passwordless sudoers configuration
+### How It Works
 
-### Technical Architecture
+#### File Protection via Unix Permissions
 
-The implementation includes:
-- Security config management (`config.ts`)
-- ACL operations (`platform/darwin.ts`)
-- Protected command execution (`executor.ts`)
-- CLI commands: `protect setup`, `protect lock`, `protect status`
-- Integration with bash tool executor
+Users specify sensitive files in `~/.opencode/security.json`. The setup modifies file permissions (`chmod 600`) to make files owner-only readable, preventing the opencode-agent user from accessing them. These restrictions are enforced at the kernel level—even successful prompt injection cannot bypass OS security.
 
-### Future Roadmap
+#### Command Whitelisting
 
-Planned enhancements include:
-- Linux support
-- Network isolation
-- Full sandboxing capabilities
+Development commands may be run via a sudo wrapper with explicit allow-lists. This is particularly important for commands like git which enforce particular permissions. Users can configure which commands the agent can run without additional restrictions, balancing security with workflow convenience.
 
 ---
 
