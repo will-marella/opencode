@@ -14,6 +14,68 @@
   <a href="https://github.com/sst/opencode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/sst/opencode/publish.yml?style=flat-square&branch=dev" /></a>
 </p>
 
+---
+
+## 🔒 Protected Mode Fork
+
+> **This is a fork of OpenCode that implements Protected Mode** - a macOS security feature that uses kernel-level file protection to prevent AI agents from accessing sensitive credentials and files.
+>
+> [View original pull request #5864](https://github.com/sst/opencode/pull/5864)
+
+### The Problem
+
+AI agents in OpenCode have full filesystem access, creating security risks for credentials and sensitive files. Prompt-level protections are insufficient to prevent AI from accessing and leaking credentials.
+
+### The Solution
+
+Protected Mode uses **Unix file permissions to enforce file restrictions at the kernel level**. Commands run as a restricted user (`opencode-agent`) that cannot read protected files.
+
+### Key Features
+
+- **Restricted user execution** - All AI agent commands run as `opencode-agent` with limited permissions
+- **Kernel-level ACL enforcement** - Uses macOS Access Control Lists for security
+- **Command whitelisting** - Common development tools (like git) are pre-approved
+- **Configurable protection** - Manage settings via `~/.opencode/security.json`
+
+### Usage
+
+```bash
+# Set up protected mode (one-time setup)
+opencode protect setup
+
+# Protect specific files or directories
+opencode protect lock ~/.ssh/id_rsa
+opencode protect lock .env
+
+# Check protection status
+opencode protect status
+```
+
+### Implementation Details
+
+- **~1,000 lines** in new `src/util/security/` module
+- **Platform-specific** macOS (darwin) implementation
+- **14 files changed** with 1,070 insertions, 12 deletions
+- Sudo-based ACL management with passwordless sudoers configuration
+
+### Technical Architecture
+
+The implementation includes:
+- Security config management (`config.ts`)
+- ACL operations (`platform/darwin.ts`)
+- Protected command execution (`executor.ts`)
+- CLI commands: `protect setup`, `protect lock`, `protect status`
+- Integration with bash tool executor
+
+### Future Roadmap
+
+Planned enhancements include:
+- Linux support
+- Network isolation
+- Full sandboxing capabilities
+
+---
+
 [![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
 
 ---
